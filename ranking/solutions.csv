@@ -1,3 +1,4 @@
-name, difficulty
-Valid Parentheses, -1
-Min Stack, -1
+name, difficulty, ranking
+Valid Parentheses, easy, -1
+Min Stack, medium, -1
+largest even number, easy, 1365

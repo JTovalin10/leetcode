@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import date
 
 df = pd.read_csv("solutions.csv", skipinitialspace=True)
-scores = df[df["difficulty"] != -1]["difficulty"]
+scores = df[df["ranking"] != -1]["ranking"]
 
 today = date.today().strftime("%Y-%m-%d")
 

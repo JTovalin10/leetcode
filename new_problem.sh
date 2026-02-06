@@ -2,57 +2,123 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Step 1: Pick difficulty
-while true; do
-    echo ""
-    echo "Which directory do you want to add the new problem in?"
-    echo "1. Easy"
-    echo "2. Medium"
-    echo "3. Hard"
-    read -rp "> " choice
+# --- Step functions ---
 
-    case "$choice" in
-        1) difficulty="easy" ; break ;;
-        2) difficulty="medium" ; break ;;
-        3) difficulty="hard" ; break ;;
-        *) echo "Invalid choice. Please enter 1, 2, or 3." ;;
+step1_difficulty() {
+    while true; do
+        echo ""
+        echo "Which directory do you want to add the new problem in?"
+        echo "1. Easy"
+        echo "2. Medium"
+        echo "3. Hard"
+        read -rp "> " choice
+
+        case "$choice" in
+            1) difficulty="easy" ; break ;;
+            2) difficulty="medium" ; break ;;
+            3) difficulty="hard" ; break ;;
+            *) echo "Invalid choice. Please enter 1, 2, or 3." ;;
+        esac
+    done
+}
+
+step2_name() {
+    while true; do
+        echo ""
+        read -rp "Name of problem: " problem_name
+
+        if [[ -z "$problem_name" ]]; then
+            echo "Problem name cannot be empty."
+            continue
+        fi
+
+        break
+    done
+}
+
+step3_number() {
+    while true; do
+        echo ""
+        read -rp "Problem number: " problem_number
+
+        if [[ -z "$problem_number" ]]; then
+            echo "Problem number cannot be empty."
+            continue
+        fi
+
+        if ! [[ "$problem_number" =~ ^[0-9]+$ ]]; then
+            echo "Problem number must be a positive integer."
+            continue
+        fi
+
+        break
+    done
+}
+
+step4_ranking() {
+    while true; do
+        echo ""
+        read -rp "Ranking number (or N/A, NA, -1 if none): " ranking_input
+
+        if [[ -z "$ranking_input" ]]; then
+            echo "Ranking cannot be empty."
+            continue
+        fi
+
+        if [[ "$ranking_input" == "N/A" || "$ranking_input" == "NA" || "$ranking_input" == "n/a" || "$ranking_input" == "na" || "$ranking_input" == "-1" ]]; then
+            ranking="-1"
+        elif [[ "$ranking_input" =~ ^[0-9]+$ ]]; then
+            ranking="$ranking_input"
+        else
+            echo "Invalid input. Enter a number, N/A, NA, or -1."
+            continue
+        fi
+
+        break
+    done
+}
+
+# --- Collect initial inputs ---
+
+step1_difficulty
+step2_name
+step3_number
+step4_ranking
+
+# --- Confirmation loop ---
+
+while true; do
+    if [[ "$ranking" == "-1" ]]; then
+        ranking_display="N/A"
+    else
+        ranking_display="$ranking"
+    fi
+
+    echo ""
+    echo "=== Summary ==="
+    echo "1. Difficulty:      $difficulty"
+    echo "2. Problem name:    $problem_name"
+    echo "3. Problem number:  $problem_number"
+    echo "4. Ranking:         $ranking_display"
+    echo "==============="
+    echo ""
+    echo "Type 'confirm' to create, or a step number (1-4) to fix it."
+    read -rp "> " action
+
+    case "$action" in
+        confirm)
+            break
+            ;;
+        1) step1_difficulty ;;
+        2) step2_name ;;
+        3) step3_number ;;
+        4) step4_ranking ;;
+        *) echo "Invalid input. Type 'confirm' or a number 1-4." ;;
     esac
 done
 
-# Step 2: Get problem name (with back option)
-while true; do
-    echo ""
-    read -rp "Name of problem (or type 'back' if you selected the wrong difficulty): " problem_name
+# --- Create directory and files ---
 
-    if [[ "$problem_name" == "back" ]]; then
-        # Go back to difficulty selection
-        while true; do
-            echo ""
-            echo "Which directory do you want to add the new problem in?"
-            echo "1. Easy"
-            echo "2. Medium"
-            echo "3. Hard"
-            read -rp "> " choice
-
-            case "$choice" in
-                1) difficulty="easy" ; break ;;
-                2) difficulty="medium" ; break ;;
-                3) difficulty="hard" ; break ;;
-                *) echo "Invalid choice. Please enter 1, 2, or 3." ;;
-            esac
-        done
-        continue
-    fi
-
-    if [[ -z "$problem_name" ]]; then
-        echo "Problem name cannot be empty."
-        continue
-    fi
-
-    break
-done
-
-# Step 3: Create directory and files
 dir_name="${problem_name,,}"
 target_dir="$SCRIPT_DIR/$difficulty/$dir_name"
 
@@ -64,14 +130,13 @@ fi
 
 mkdir -p "$target_dir"
 
-# Create REFLECTION.md
 cat > "$target_dir/REFLECTION.md" << EOF
 # $dir_name
 
 ## Details
 
-Problem number:
-Rating: N/A
+Problem number: $problem_number
+Rating: $ranking_display
 
 ## What went well
 
@@ -80,10 +145,12 @@ Rating: N/A
 ## Closing Notes
 EOF
 
-# Create empty solution.py
 touch "$target_dir/solution.py"
+
+echo "$problem_name, $difficulty, $ranking" >> "$SCRIPT_DIR/ranking/solutions.csv"
 
 echo ""
 echo "Created: $target_dir/"
 echo "  - REFLECTION.md"
 echo "  - solution.py"
+echo "Added to ranking/solutions.csv"
