@@ -1,4 +1,4 @@
-name, difficulty, ranking
-Valid Parentheses, easy, -1
-Min Stack, medium, -1
-largest even number, easy, 1365
+name, difficulty, topic, ranking, hints_used, editorial_heading, editorial_insight, looked_at_solution
+Valid Parentheses, easy, general, -1, 0, 0, 0, 0
+Min Stack, medium, general, -1, 0, 0, 0, 0
+largest even number, easy, general, 1365, 0, 0, 0, 0
