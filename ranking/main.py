@@ -1,37 +1,69 @@
-import pandas as pd
+import csv
 from datetime import date
 
-STARTING_ELO = 1200
+RANK_TIERS = [
+    (2900, "Legendary Grandmaster"),
+    (2600, "International Grandmaster"),
+    (2400, "Grandmaster"),
+    (2300, "International Master"),
+    (2100, "Master"),
+    (1900, "Candidate Master"),
+    (1600, "Expert"),
+    (1400, "Specialist"),
+    (1200, "Pupil"),
+    (0, "Newbie"),
+]
+
+
+def get_rank(rating):
+    for threshold, title in RANK_TIERS:
+        if rating >= threshold:
+            return title
+    return "Newbie"
+
+
+def performance_score(row):
+    score = 1.0
+    score -= 0.1 * int(row["hints_used"])
+    score -= 0.15 * int(row["editorial_heading"])
+    score -= 0.25 * int(row["editorial_insight"])
+    score -= 0.5 * int(row["looked_at_solution"])
+    return max(score, 0.0)
+
+
+rating = 800
+topic_ratings = {}
 K = 32
 
-# Hints penalty: how much credit you get for solving the problem
-# 0 = no hints (full win), 6 = used solution (full loss)
-HINT_SCORE = {
-    0: 1.0,   # no hints - full win
-    1: 0.85,  # hint 1
-    2: 0.7,   # hint 2
-    3: 0.55,  # hint 3
-    4: 0.4,   # editorial heading
-    5: 0.25,  # editorial paragraph
-    6: 0.0,   # solution - full loss
-}
+with open("solutions.csv", newline="") as f:
+    reader = csv.DictReader(f, skipinitialspace=True)
+    for row in reader:
+        problem_rating = int(row["ranking"])
+        if problem_rating == -1:
+            continue
 
-df = pd.read_csv("solutions.csv", skipinitialspace=True)
-rated = df[df["ranking"] != -1]
+        topic = row["topic"].strip()
+        if topic not in topic_ratings:
+            topic_ratings[topic] = 800
+
+        # Update overall rating
+        expected = 1 / (1 + 10 ** ((problem_rating - rating) / 400))
+        actual = performance_score(row)
+        rating = rating + K * (actual - expected)
+
+        # Update topic rating
+        topic_expected = 1 / (1 + 10 ** ((problem_rating - topic_ratings[topic]) / 400))
+        topic_ratings[topic] = topic_ratings[topic] + K * (actual - topic_expected)
 
 today = date.today().strftime("%Y-%m-%d")
+rank_title = get_rank(rating)
+lines = [f"{today}: rating = {rating:.0f} ({rank_title})"]
+for topic in sorted(topic_ratings):
+    t_rating = topic_ratings[topic]
+    t_rank = get_rank(t_rating)
+    lines.append(f"  {topic}: {t_rating:.0f} ({t_rank})")
 
-if rated.empty:
-    new_entry = f"{today}: leetcode score = none for now"
-else:
-    elo = STARTING_ELO
-    for _, row in rated.iterrows():
-        problem_rating = row["ranking"]
-        hints = int(row["hints"]) if "hints" in row and pd.notna(row["hints"]) else 0
-        score = HINT_SCORE.get(hints, 1.0)
-        expected = 1 / (1 + 10 ** ((problem_rating - elo) / 400))
-        elo += K * (score - expected)
-    new_entry = f"{today}: leetcode score = {elo:.2f}"
+new_entry = "\n".join(lines)
 
 try:
     with open("ranking.txt", "r") as f:

@@ -1,49 +1,89 @@
 # Leetcode Ranking
 
-Tracks my Leetcode skill level over time using a chess-style Elo rating system.
+Tracks my Leetcode skill rating using an Elo system with Codeforces-style ranks.
 
 ## Why
 
-Saying "I can solve hards" or "I can do mediums" doesn't say much. The difficulty ratings from the **Leetcode Difficulty Rating** Chrome extension give each problem a numerical score based on weekly contest data, which provides a much more accurate picture of my current skill level.
+Saying "I can solve hards" or "I can do mediums" doesn't say much. The difficulty ratings from the **Leetcode Difficulty Rating** Chrome extension give each problem a numerical score based on weekly contest data. An Elo system uses those ratings to compute a skill rating that also penalizes relying on hints and editorials.
 
 ## How it works
 
-The scoring uses an Elo system (same concept as chess ratings). Each problem you solve is treated like a match against an opponent rated at that problem's difficulty. Your Elo adjusts based on whether the problem was above or below your current level, and how much help you needed.
+`main.py` reads from `solutions.csv`, computes an Elo rating based on problem difficulty and how much help was used, and writes the result to `ranking.txt`.
 
-### Elo calculation
+### CSV columns
 
-- You start at **1200 Elo**
-- For each solved problem, the expected outcome is calculated: `E = 1 / (1 + 10^((problem_rating - your_elo) / 400))`
-- Your Elo updates: `new_elo = old_elo + K * (score - E)` where K = 32
-- `score` depends on how much help you used (see below)
+`solutions.csv` has the following columns:
 
-This means:
-- Solving a problem rated **above** your current Elo gives a big boost
-- Solving a problem rated **below** your current Elo gives a small boost
-- Using hints reduces the credit you get
-- Using the full solution counts as a **loss** and drops your Elo
+| Column | Description |
+|---|---|
+| `name` | Problem name |
+| `difficulty` | easy / medium / hard |
+| `topic` | Problem topic (e.g. binary tree, dp, graphs). Used for per-topic ratings |
+| `ranking` | Numerical difficulty rating (-1 if unavailable) |
+| `hints_used` | Number of hints used (0+) |
+| `editorial_heading` | 1 if you looked at the editorial heading, 0 otherwise |
+| `editorial_insight` | 1 if you read the editorial approach paragraph, 0 otherwise |
+| `looked_at_solution` | 1 if you looked at the full solution, 0 otherwise |
 
-### Hint penalties
+### Performance score
 
-Each problem tracks how much help was used on a 0-6 scale:
+Each solve gets a performance score (1.0 = clean solve):
 
-| Level | Description | Score (credit) |
-|-------|-------------|----------------|
-| 0 | No hints | 1.0 (full win) |
-| 1 | Hint 1 | 0.85 |
-| 2 | Hint 2 | 0.70 |
-| 3 | Hint 3 | 0.55 |
-| 4 | Editorial heading | 0.40 |
-| 5 | Editorial paragraph | 0.25 |
-| 6 | Full solution | 0.0 (full loss) |
+- Start at 1.0
+- Each hint: **-0.1**
+- Editorial heading: **-0.15**
+- Editorial insight: **-0.25**
+- Looked at solution: **-0.5**
+- Floor at 0.0
 
-### Data flow
+### Elo formula
 
-1. **Reads** `solutions.csv` -- columns: `name`, `difficulty`, `ranking`, `time_minutes`, `hints`
-2. **Filters out** entries with a ranking of `-1` (no rating available)
-3. **Replays** each problem through the Elo formula in order, applying hint penalties
-4. **Writes** a dated entry (e.g. `2026-02-12: leetcode score = 1260.49`) to the top of `ranking.txt`
-5. **Prints** the same entry to the terminal
+Your rating starts at **800** and updates after each problem:
+
+1. **Expected score** — how likely you are to cleanly solve the problem given your current rating:
+   ```
+   expected = 1 / (1 + 10^((problem_rating - your_rating) / 400))
+   ```
+   If the problem rating is close to yours, expected is ~0.5. If the problem is way above you, expected drops toward 0. If it's way below, expected approaches 1.
+
+2. **Actual score** — your performance score (1.0 for a clean solve, reduced by hints/editorial use).
+
+3. **Rating update** — the difference between actual and expected determines how your rating moves:
+   ```
+   new_rating = old_rating + 32 * (actual - expected)
+   ```
+   - Cleanly solve a hard problem (actual > expected) → rating goes **up**
+   - Struggle with an easy problem (actual < expected) → rating goes **down**
+   - The **32** (K-factor) controls how much each problem swings your rating
+
+Rows with `ranking == -1` are skipped (no difficulty data available).
+
+### Codeforces ranks
+
+| Rating | Rank |
+|---|---|
+| < 1200 | Newbie |
+| 1200–1399 | Pupil |
+| 1400–1599 | Specialist |
+| 1600–1899 | Expert |
+| 1900–2099 | Candidate Master |
+| 2100–2299 | Master |
+| 2300–2399 | International Master |
+| 2400–2599 | Grandmaster |
+| 2600–2899 | International Grandmaster |
+| >= 2900 | Legendary Grandmaster |
+
+### Output
+
+A dated entry is written to the top of `ranking.txt` with the overall rating and per-topic breakdowns (sorted alphabetically):
+
+```
+2026-02-06: rating = 831 (Newbie)
+  binary tree: 850 (Newbie)
+  dp: 780 (Newbie)
+```
+
+Each topic starts at 800 and is updated independently using the same Elo formula. This lets you see which topics are your strongest and weakest.
 
 ### Running
 
@@ -53,4 +93,4 @@ Each problem tracks how much help was used on a 0-6 scale:
 
 ## Updating the data
 
-Use `new_problem.sh` in the repo root. It asks for all the fields and appends to `solutions.csv` automatically.
+After solving a problem, run `./new_problem.sh` from the repo root. It walks you through all the fields and appends a row to `solutions.csv`. Then run `./run.sh` inside `ranking/` to recalculate.
