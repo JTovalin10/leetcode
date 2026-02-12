@@ -1,4 +1,6 @@
-name, difficulty, ranking
-Valid Parentheses, easy, -1
-Min Stack, medium, -1
-largest even number, easy, 1365
+name, difficulty, ranking, time_minutes, hints
+Valid Parentheses, easy, -1, -1, 0
+Min Stack, medium, -1, -1, 0
+largest even number, easy, 1365, -1, 0
+Sum of Digits in the Minimum Number, easy, 1256, -1, 0
+High Five, easy, 1327, -1, 0

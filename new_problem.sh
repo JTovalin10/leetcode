@@ -78,14 +78,64 @@ step4_ranking() {
     done
 }
 
+step5_time() {
+    while true; do
+        echo ""
+        read -rp "How long did it take in minutes? (enter or -1 to skip): " time_input
+
+        if [[ -z "$time_input" || "$time_input" == "-1" ]]; then
+            time_minutes="-1"
+            break
+        fi
+
+        if [[ "$time_input" =~ ^[0-9]+$ ]]; then
+            time_minutes="$time_input"
+            break
+        fi
+
+        echo "Invalid input. Enter a number or press enter to skip."
+    done
+}
+
+step6_hints() {
+    while true; do
+        echo ""
+        echo "How much help did you use?"
+        echo "0. None (or just press enter)"
+        echo "1. Hint 1"
+        echo "2. Hint 2"
+        echo "3. Hint 3"
+        echo "4. Editorial heading"
+        echo "5. Editorial paragraph"
+        echo "6. Solution (counts as a loss)"
+        read -rp "> " hints_input
+
+        if [[ -z "$hints_input" ]]; then
+            hints="0"
+            break
+        fi
+
+        if [[ "$hints_input" =~ ^[0-6]$ ]]; then
+            hints="$hints_input"
+            break
+        fi
+
+        echo "Invalid input. Enter 0-6 or press enter for none."
+    done
+}
+
 # --- Collect initial inputs ---
 
 step1_difficulty
 step2_name
 step3_number
 step4_ranking
+step5_time
+step6_hints
 
 # --- Confirmation loop ---
+
+hint_labels=("None" "Hint 1" "Hint 2" "Hint 3" "Editorial heading" "Editorial paragraph" "Solution (loss)")
 
 while true; do
     if [[ "$ranking" == "-1" ]]; then
@@ -94,15 +144,23 @@ while true; do
         ranking_display="$ranking"
     fi
 
+    if [[ "$time_minutes" == "-1" ]]; then
+        time_display="N/A"
+    else
+        time_display="${time_minutes} min"
+    fi
+
     echo ""
     echo "=== Summary ==="
     echo "1. Difficulty:      $difficulty"
     echo "2. Problem name:    $problem_name"
     echo "3. Problem number:  $problem_number"
     echo "4. Ranking:         $ranking_display"
+    echo "5. Time:            $time_display"
+    echo "6. Hints used:      ${hint_labels[$hints]}"
     echo "==============="
     echo ""
-    echo "Type 'confirm' to create, or a step number (1-4) to fix it."
+    echo "Type 'confirm' to create, or a step number (1-6) to fix it."
     read -rp "> " action
 
     case "$action" in
@@ -113,7 +171,9 @@ while true; do
         2) step2_name ;;
         3) step3_number ;;
         4) step4_ranking ;;
-        *) echo "Invalid input. Type 'confirm' or a number 1-4." ;;
+        5) step5_time ;;
+        6) step6_hints ;;
+        *) echo "Invalid input. Type 'confirm' or a number 1-6." ;;
     esac
 done
 
@@ -137,6 +197,8 @@ cat > "$target_dir/REFLECTION.md" << EOF
 
 Problem number: $problem_number
 Rating: $ranking_display
+Time: $time_display
+Hints: ${hint_labels[$hints]}
 
 ## What went well
 
@@ -147,7 +209,7 @@ EOF
 
 touch "$target_dir/solution.py"
 
-echo "$problem_name, $difficulty, $ranking" >> "$SCRIPT_DIR/ranking/solutions.csv"
+echo "$problem_name, $difficulty, $ranking, $time_minutes, $hints" >> "$SCRIPT_DIR/ranking/solutions.csv"
 
 echo ""
 echo "Created: $target_dir/"
